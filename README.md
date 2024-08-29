@@ -1,2 +1,1 @@
-# codescanai-action
-A Github action that provides CodeScanAI project to be used in Github workflows.
+<!-- action-docs-all source="action.yml" project="codescanai/codescanai-action" version="v1.0.0" -->
