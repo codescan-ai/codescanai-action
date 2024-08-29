@@ -1,0 +1,132 @@
+name: "CodeScanAI Action"
+description: "A Github action that provides the CodeScanAI project to be used in Github workflows across multiple operating systems."
+author: "Caleb Abhulimhen"
+branding:
+  icon: "package"
+  color: "blue"
+
+inputs:
+  version:
+    description: "Version of CodeScanAI to install"
+    required: false
+    default: "latest"
+  provider:
+    description: "AI provider to use"
+    required: true
+  model:
+    description: "AI model from the provider to use"
+    required: false
+  directory:
+    description: "Directory to scan"
+    required: false
+    default: "."
+  changes_only:
+    description: "Scans only files with recent changes"
+    required: false
+    default: "false"
+  repo:
+    description: "GitHub repository"
+    required: false
+  pr_number:
+    description: "Pull request number"
+    required: false
+  github_token:
+    description: "GitHub API token"
+    required: false
+  host:
+    description: "Custom AI server host"
+    required: false
+  port:
+    description: "Custom AI server port"
+    required: false
+  token:
+    description: "Token for authenticating with the custom AI server"
+    required: false
+  endpoint:
+    description: "API endpoint for the custom server"
+    required: false
+    default: "/api/v1/scan"
+  output_file:
+    description: "Optional output file to store CodeScanAI results"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
+
+    - name: Cache pip dependencies on Linux
+      if: ${{ startsWith(runner.os, 'Linux') }}
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('action.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Cache pip dependencies on macOS
+      if: ${{ startsWith(runner.os, 'macOS') }}
+      uses: actions/cache@v4
+      with:
+        path: ~/Library/Caches/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('action.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Cache pip dependencies on Windows
+      if: ${{ startsWith(runner.os, 'Windows') }}
+      uses: actions/cache@v4
+      with:
+        path: ~\AppData\Local\pip\Cache
+        key: ${{ runner.os }}-pip-${{ hashFiles('action.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install CodeScanAI on Linux/macOS
+      if: ${{ startsWith(runner.os, 'Linux') || startsWith(runner.os, 'macOS') }}
+      shell: bash
+      run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          pip install codescanai
+        else
+          pip install codescanai==${{ inputs.version }}
+        fi
+
+    - name: Install CodeScanAI on Windows
+      if: ${{ startsWith(runner.os, 'Windows') }}
+      shell: pwsh
+      run: |
+        if ("${{ inputs.version }}" -eq "latest") {
+          pip install codescanai
+        } else {
+          pip install codescanai==${{ inputs.version }}
+        }
+    - name: Run codescanai
+      shell: bash
+      run: |
+        run_command="codescanai"
+
+        # Conditionally add each flag
+        [ -n "${{ inputs.provider }}" ] && run_command="$run_command --provider ${{ inputs.provider }}"
+        [ -n "${{ inputs.directory }}" ] && run_command="$run_command --directory ${{ inputs.directory }}"
+        [ -n "${{ inputs.model }}" ] && run_command="$run_command --model ${{ inputs.model }}"
+        [ "${{ inputs.changes_only }}" == "true" ] && run_command="$run_command --changes_only"
+        [ -n "${{ inputs.repo }}" ] && run_command="$run_command --repo ${{ inputs.repo }}"
+        [ -n "${{ inputs.pr_number }}" ] && run_command="$run_command --pr_number ${{ inputs.pr_number }}"
+        [ -n "${{ inputs.github_token }}" ] && run_command="$run_command --github_token ${{ inputs.github_token }}"
+        [ -n "${{ inputs.host }}" ] && run_command="$run_command --host ${{ inputs.host }}"
+        [ -n "${{ inputs.port }}" ] && run_command="$run_command --port ${{ inputs.port }}"
+        [ -n "${{ inputs.token }}" ] && run_command="$run_command --token ${{ inputs.token }}"
+        [ -n "${{ inputs.endpoint }}" ] && run_command="$run_command --endpoint ${{ inputs.endpoint }}"
+
+        # Determine if an output file was specified
+        if [ -n "${{ inputs.output_file }}" ]; then
+          # Write to the specified file
+          $run_command 1> "${{ inputs.output_file }}"
+        else
+          # Write to the console
+          $run_command
+        fi
