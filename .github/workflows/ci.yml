@@ -1,0 +1,40 @@
+name: CodeScanAI Action CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-codescanai-action:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run CodeScanAI Action
+        id: codescanai_test
+        uses: ./
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        with:
+          provider: "openai"
+          directory: "."
+          output_file: "codescan_output.txt"
+
+      - name: Check CodeScanAI Output
+        shell: bash
+        run: |
+          codescanai_output_file="codescan_output.txt"
+
+          # Check if the output file exists and is not empty
+          if [[ ! -s "$codescanai_output_file" ]]; then
+            echo "No output detected from CodeScanAI action."
+            exit 1
+          fi
+
+          echo "CodeScanAI action produced output successfully."
+          cat "$codescanai_output_file"
